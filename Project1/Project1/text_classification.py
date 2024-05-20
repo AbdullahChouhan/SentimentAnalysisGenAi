@@ -1,9 +1,12 @@
-import numpy as np
-import tensorflow as tf
-from tensorflow import keras
-import tensorflow_datasets as tfds
-from keras.layers import Bidirectional, LSTM, Conv1D, MaxPooling1D
-
+try:    
+    import numpy as np
+    import tensorflow as tf
+    from tensorflow import keras
+    import tensorflow_datasets as tfds
+    from keras.layers import Bidirectional, LSTM, Conv1D, MaxPooling1D
+except ModuleNotFoundError as e:
+    print(f"Couldn't import modules: {e}")
+    exit(1)
 
 if not tf.__version__.startswith('2'):
     raise ValueError('This code requires TensorFlow V2.x')
@@ -19,6 +22,7 @@ class AI:
 
         This method is called when an instance of the class is created. It loads the IMDB dataset for sentiment analysis.
         """
+        self.model = None
         self.load_imdb_data()
 
     def load_imdb_data(self):
@@ -92,7 +96,7 @@ class AI:
         model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
         early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
         model.fit(self.train_padded, self.train_labels, epochs=10, validation_data=(self.test_padded, self.test_labels), callbacks=[early_stop])
-        return model
+        self.model = model
 
     def buildLSTM_model(self):
         """
@@ -119,7 +123,7 @@ class AI:
         model.compile(loss="binary_crossentropy", optimizer=keras.optimizers.Adam(learning_rate=0.001), metrics=["accuracy"])
         early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
         model.fit(self.train_padded, self.train_labels, epochs=10, validation_data=(self.test_padded, self.test_labels), callbacks=[early_stop])
-        return model
+        self.model = model
 
     def buildCNN_model(self):
         """
@@ -154,5 +158,26 @@ class AI:
         early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
         checkpoint = keras.callbacks.ModelCheckpoint("best_model.h5", save_best_only=True)
         model.fit(self.train_padded, self.train_labels, epochs=10, validation_data=(self.test_padded, self.test_labels), callbacks=[early_stop, checkpoint])
-        return model
+        self.model = model
+        
+    def analyze(self, text):
+        """
+        Analyzes the input text and returns the predicted sentiment.
 
+        Parameters:
+        - text (str): The input text to analyze.
+
+        Returns:
+        - sentiment (str): The predicted sentiment of the input text.
+
+        The function uses the trained model to predict the sentiment of the input text.
+        The predicted sentiment is returned as a string.
+        """
+        if not self.tokenizer:
+            raise Exception("Tokenizer not initialized. Please call _tokenize_and_pad_data() first.")
+        sequences = self.tokenizer.texts_to_sequences([text])
+        padded = keras.preprocessing.sequence.pad_sequences(sequences, maxlen=100, padding='post', truncating='post')
+        if not self.model:
+            raise Exception("Model not initialized. Please call build() or buildCNN_model() first.")
+        sentiment = "Positive" if self.model.predict(padded)[0][0] > 0.5 else "Negative"
+        return sentiment
