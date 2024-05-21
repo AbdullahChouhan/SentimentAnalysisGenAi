@@ -5,7 +5,7 @@ try:
     from enum import Enum
     from ctypes import windll
     import threading
-    # from .text_classification import AI
+    from .text_classification import AI
     from .spinner import Spinner
 except ModuleNotFoundError as e:
     print(f"Couldn't import modules: {e}")
@@ -249,17 +249,9 @@ class app:
         Parameters:
         - self (object): The instance of the class.
         """
-        # ai = AI()
-        # if self.modelstate == Appstate.RNN:
-        #     ai.buildRNN_model()
-        # elif self.modelstate == Appstate.LSTM:
-        #     ai.buildLSTM_model()
-        # elif self.modelstate == Appstate.CNN:
-        #     ai.buildCNN_model()
-        # wait 10 seconds
+        self.ai = AI(modelname=self.modelstate.name)
         def build_task():
-            for i in range(20000):
-                print(i)
+            self.ai.build()
             self.state = Appstate.MODELBUILT
         threading.Thread(target=build_task).start()
         
@@ -275,11 +267,10 @@ class app:
         if self.analysistext.get() == "":
             self.root.sentiment.config(text="Please enter text")
         else:
-            # Reconfigure if checks to model analysis
-            if self.analysistext.get() == "Positive":
+            if self.ai.analyze(self.analysistext.get()) == "Positive":
                 self.root.sentiment.config(text="Positive")
                 self.root.sentiment.config(foreground="green")
-            elif self.analysistext.get() == "Negative":
+            elif self.ai.analyze(self.analysistext.get()) == "Negative":
                 self.root.sentiment.config(text="Negative")
                 self.root.sentiment.config(foreground="red")
                 
