@@ -1,9 +1,9 @@
 try:    
     import numpy as np
     import tensorflow as tf
-    from tensorflow import keras
+    import keras
+    from os import path
     import tensorflow_datasets as tfds
-    from keras.layers import Bidirectional, LSTM, Conv1D, MaxPooling1D
 except ModuleNotFoundError as e:
     print(f"Couldn't import modules: {e}")
     exit(1)
@@ -16,14 +16,35 @@ class AI:
     The AI class is responsible for loading and processing the IMDb dataset
     and building various neural network models for text classification using TensorFlow and Keras.
     """
-    def __init__(self):
+    def __init__(self, modelname = ""):
         """
         Initializes the object by calling the `load_imdb_data` method.
 
         This method is called when an instance of the class is created. It loads the IMDB dataset for sentiment analysis.
         """
-        self.model = None
+        self.modelname = modelname
+        self.modelpath = path.join(path.dirname(__file__), 'models')
+        try:
+            self.model = keras.models.load_model(self.modelpath + "/" + self.modelname + ".keras")
+        except:
+            print("Couldn't locally load model. Building instead.")
+            self.model = None
+            
+    def build(self):
+        """
+        Builds the model.
+
+        This method is called when the user selects the "Build" button. It builds the model using the `build_rnn_model`, `build_lstm_model`, and `build_cnn_model` methods.
+        """
         self.load_imdb_data()
+        if self.model != None:
+          return
+        if self.modelname == "RNN":
+            self.buildRNN_model()
+        elif self.modelname == "LSTM":
+            self.buildLSTM_model()
+        elif self.modelname == "CNN":
+            self.buildCNN_model()
 
     def load_imdb_data(self):
         """
@@ -56,7 +77,7 @@ class AI:
         Converts sentences to sequences and pads them to a maximum length of 100.
         Stores the padded sequences and labels as instance variables (self.train_padded, self.test_padded, self.train_labels, self.test_labels).
         """
-        self.tokenizer = keras.preprocessing.text.Tokenizer(num_words=10000, oov_token='<OOV>')
+        self.tokenizer = tf.keras.preprocessing.text.Tokenizer(num_words=10000, oov_token='<OOV>')
         train_sentences, train_labels = zip(*[(sent.numpy().decode('utf8'), label.numpy()) for sent, label in train_data])
         self.tokenizer.fit_on_texts(train_sentences)
         train_sequences = self.tokenizer.texts_to_sequences(train_sentences)
@@ -97,6 +118,7 @@ class AI:
         early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
         model.fit(self.train_padded, self.train_labels, epochs=10, validation_data=(self.test_padded, self.test_labels), callbacks=[early_stop])
         self.model = model
+        keras.models.save_model(self.model, self.modelpath + "/RNN.keras", save_format="keras")
 
     def buildLSTM_model(self):
         """
@@ -116,14 +138,15 @@ class AI:
         """
         model = keras.models.Sequential([
             keras.layers.Embedding(10000, 32),
-            Bidirectional(LSTM(32, dropout=0.5, recurrent_dropout=0.5, kernel_regularizer=keras.regularizers.l2(0.001))),
+            keras.layers.Bidirectional(keras.layers.LSTM(32, dropout=0.5, recurrent_dropout=0.5, kernel_regularizer=keras.regularizers.l2(0.001))),
             keras.layers.Dense(1, activation='sigmoid')
         ])
 
-        model.compile(loss="binary_crossentropy", optimizer=keras.optimizers.Adam(learning_rate=0.001), metrics=["accuracy"])
+        model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
         early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
         model.fit(self.train_padded, self.train_labels, epochs=10, validation_data=(self.test_padded, self.test_labels), callbacks=[early_stop])
         self.model = model
+        keras.models.save_model(self.model, self.modelpath + "\\LSTM")
 
     def buildCNN_model(self):
         """
@@ -147,18 +170,19 @@ class AI:
         """
         model = keras.Sequential([
             keras.layers.Embedding(10000, 32),
-            Conv1D(32, 7, activation='relu'),
-            MaxPooling1D(5),
-            Bidirectional(LSTM(32, return_sequences=True, dropout=0.5, recurrent_dropout=0.5, kernel_regularizer=keras.regularizers.l2(0.001))),
-            Bidirectional(LSTM(32, dropout=0.5, recurrent_dropout=0.5, kernel_regularizer=keras.regularizers.l2(0.001))),
+            keras.layers.Conv1D(32, 7, activation='relu'),
+            keras.layers.MaxPooling1D(5),
+            keras.layers.Bidirectional(keras.layers.LSTM(32, return_sequences=True, dropout=0.5, recurrent_dropout=0.5, kernel_regularizer=keras.regularizers.l2(0.001))),
+            keras.layers.Bidirectional(keras.layers.LSTM(32, dropout=0.5, recurrent_dropout=0.5, kernel_regularizer=keras.regularizers.l2(0.001))),
             keras.layers.Dense(1, activation='sigmoid')
         ])
 
-        model.compile(loss="binary_crossentropy", optimizer=keras.optimizers.RMSprop(learning_rate=0.001), metrics=["accuracy"])
+        model.compile(loss="binary_crossentropy", optimizer="rmsprop", metrics=["accuracy"])
         early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
         checkpoint = keras.callbacks.ModelCheckpoint("best_model.h5", save_best_only=True)
         model.fit(self.train_padded, self.train_labels, epochs=10, validation_data=(self.test_padded, self.test_labels), callbacks=[early_stop, checkpoint])
         self.model = model
+        keras.models.save_model(self.model, self.modelpath + "\\CNN")
         
     def analyze(self, text):
         """
@@ -173,8 +197,6 @@ class AI:
         The function uses the trained model to predict the sentiment of the input text.
         The predicted sentiment is returned as a string.
         """
-        if not self.tokenizer:
-            raise Exception("Tokenizer not initialized. Please call _tokenize_and_pad_data() first.")
         sequences = self.tokenizer.texts_to_sequences([text])
         padded = keras.preprocessing.sequence.pad_sequences(sequences, maxlen=100, padding='post', truncating='post')
         if not self.model:
