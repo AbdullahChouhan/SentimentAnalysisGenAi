@@ -3,7 +3,7 @@ print("Abdullah Chouhan: Assignment 4\n\nImporting modules...")
 try:
     import numpy as np
     import tensorflow as tf
-    from tensorflow import keras
+    import keras
     import tensorflow_datasets as tfds
 
     if not tf.__version__.startswith('2'):
