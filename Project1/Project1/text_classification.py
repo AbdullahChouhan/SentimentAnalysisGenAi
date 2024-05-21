@@ -118,7 +118,7 @@ class AI:
         early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
         model.fit(self.train_padded, self.train_labels, epochs=10, validation_data=(self.test_padded, self.test_labels), callbacks=[early_stop])
         self.model = model
-        keras.models.save_model(self.model, self.modelpath + "/RNN.keras", save_format="keras")
+        keras.models.save_model(self.model, self.modelpath + "/RNN.keras")
 
     def buildLSTM_model(self):
         """
