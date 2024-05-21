@@ -80,7 +80,7 @@ class Spinner(tk.Canvas):
         """
         self.running = False
         self.update()
-        time.sleep(0.1)
+        time.sleep(0.01)
     
     def on_destroy(self):
         """
