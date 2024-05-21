@@ -55,14 +55,13 @@ class app:
         self.root.button2.pack(pady=10, ipady=5, ipadx=5)
         self.root.button3 = ttk.Button(self.root, text="CNN", command=self.cnn, style="MyButton.TButton")
         self.root.button3.pack(pady=10, ipady=5, ipadx=5)
-
     @classmethod
     def style_button(cls):
         style = ttk.Style()
         style.configure(
             "MyButton.TButton",
-            font=("Helvetica", 24),
-            padding=10
+            font=("Helvetica", 16),
+            padding=5
         )
         style.map(
             "MyButton.TButton",
@@ -82,6 +81,7 @@ class app:
             self.root.loading.pack()
             self.state = Appstate.BUILDING
             threading.Thread(target=self.root.loading.rotate).start()
+            self.root.loading.bind("<Destroy>", lambda event: self.root.loading.on_destroy())
         elif self.state == Appstate.BUILDING:
             # self.root.loading.rotate()
             pass
@@ -90,8 +90,12 @@ class app:
             for widget in self.root.winfo_children():
                 if widget != self.root.heading1:
                     widget.destroy()
-            self.root.heading2 = ttk.Label(self.root, text="Analysis", font=("Helvetica", 24)).pack()
+            self.root.sentiment = ttk.Label(self.root, text="", font=("Helvetica", 24))
+            self.root.currmodel = ttk.Label(self.root, text="Current Model: " + self.modelstate.name, font=("Helvetica", 24)).pack()
             self.root.entry = ttk.Entry(self.root, font=("Helvetica", 24), width=50, textvariable=self.analysistext).pack()
+            self.root.button4 = ttk.Button(self.root, text="Analyze", command=self.analyze, style="MyButton.TButton").pack()
+            self.root.button5 = ttk.Button(self.root, text="Clear", command=self.clear, style="MyButton.TButton").pack()
+            self.root.sentiment.pack()
             self.state = Appstate.ANALYSIS
         elif self.state == Appstate.ANALYSIS:
             pass
@@ -131,6 +135,22 @@ class app:
                 print(i)
             self.state = Appstate.MODELBUILT
         threading.Thread(target=build_task).start()
+        
+    def analyze(self):
+        if self.analysistext.get() == "":
+            self.root.sentiment.config(text="Please enter text")
+        else:
+            # Reconfigure if checks to model analysis
+            if self.analysistext.get() == "Positive":
+                self.root.sentiment.config(text="Positive")
+                self.root.sentiment.config(foreground="green")
+            elif self.analysistext.get() == "Negative":
+                self.root.sentiment.config(text="Negative")
+                self.root.sentiment.config(foreground="red")
+                
+    def clear(self):
+        self.analysistext.set("")
+        self.root.sentiment.config(text="")
 
     @classmethod
     def run(cls):
